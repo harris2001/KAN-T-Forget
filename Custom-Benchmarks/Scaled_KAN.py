@@ -12,12 +12,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
+# [Modifications]:
+#   Modified by Harris Hadjiantonis (@harris2001) on August 2024: 
+# [Description of changes]:
+#   Added optional device argument to the functions to allow for GPU acceleration.
+
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import math
 from typing import *
+import os
+from matplotlib import pyplot as plt
 
 class SplineLinear(nn.Linear):
     def __init__(self, in_features: int, out_features: int, init_scale: float = 0.1, **kw) -> None:
@@ -34,12 +42,13 @@ class RadialBasisFunction(nn.Module):
         grid_max: float = 2.,
         num_grids: int = 8,
         denominator: float = None,  # larger denominators lead to smoother basis
+        device: torch.device = torch.device("cpu"),
     ):
         super().__init__()
         self.grid_min = grid_min
         self.grid_max = grid_max
         self.num_grids = num_grids
-        grid = torch.linspace(grid_min, grid_max, num_grids)
+        grid = torch.linspace(grid_min, grid_max, num_grids, device=device)
         self.grid = torch.nn.Parameter(grid, requires_grad=False)
         self.denominator = denominator or (grid_max - grid_min) / (num_grids - 1)
 
@@ -58,19 +67,21 @@ class FastKANLayer(nn.Module):
         use_layernorm: bool = True,
         base_activation = F.silu,
         spline_weight_init_scale: float = 0.1,
+        device: torch.device = torch.device("cpu"),
     ) -> None:
         super().__init__()
 
         self.input_dim = input_dim
         self.output_dim = output_dim
         self.layernorm = None
+        self.device = device
 
         # Normalise layer input
         if use_layernorm:
             assert input_dim > 1, "Do not use layernorms on 1D inputs. Set `use_layernorm=False`."
             self.layernorm = nn.LayerNorm(input_dim)
         
-        self.rbf = RadialBasisFunction(grid_min, grid_max, num_grids)
+        self.rbf = RadialBasisFunction(grid_min, grid_max, num_grids, device=device)
         self.spline_linear = SplineLinear(input_dim * num_grids, output_dim, spline_weight_init_scale)
         self.use_base_update = use_base_update
         
@@ -109,12 +120,12 @@ class FastKANLayer(nn.Module):
         assert output_index < self.output_dim
         w = self.spline_linear.weight[
             output_index, input_index * ng : (input_index + 1) * ng
-        ]   # num_grids,
+        ].to(self.device)   # num_grids,
         x = torch.linspace(
             self.rbf.grid_min - num_extrapolate_bins * h,
             self.rbf.grid_max + num_extrapolate_bins * h,
             num_pts
-        )   # num_pts, num_grids
+        ).to(self.device)   # num_pts, num_grids
         with torch.no_grad():
             y = (w * self.rbf(x.to(w.dtype))).sum(-1)
         return x, y
@@ -130,6 +141,7 @@ class FastKAN(nn.Module):
         use_base_update: bool = True,
         base_activation = F.silu,
         spline_weight_init_scale: float = 0.1,
+        device: torch.device = torch.device("cpu"),
     ) -> None:
         super().__init__()
         # Stack layers
@@ -142,6 +154,7 @@ class FastKAN(nn.Module):
                 use_base_update=use_base_update,
                 base_activation=base_activation,
                 spline_weight_init_scale=spline_weight_init_scale,
+                device=device
             ) for in_dim, out_dim in zip(layers_hidden[:-1], layers_hidden[1:])
         ])
     # Forward application of layers
