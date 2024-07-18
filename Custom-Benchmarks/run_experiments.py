@@ -54,6 +54,7 @@ def main(hidden_conv, hidden_kan, grids, lr_conv, lr_kan, momentum_conv, momentu
     tasks = 10
 
 
+    print(device)
     model = get_conventional(hidden_conv)
     model.to(device)
 
@@ -75,9 +76,9 @@ def main(hidden_conv, hidden_kan, grids, lr_conv, lr_kan, momentum_conv, momentu
     train_set = datasets.MNIST('../data', train=True, download=True, transform=transform)
     test_set = datasets.MNIST('../data', train=False, download=True, transform=transform)
 
-    optimizer = optim.Adam(model.parameters(), lr=lr_conv)
-    scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=momentum_conv)
-    loss_fn = nn.CrossEntropyLoss()
+    # optimizer = optim.Adam(model.parameters(), lr=lr_conv)
+    # scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=momentum_conv)
+    # loss_fn = nn.CrossEntropyLoss()
 
 
     optimizer_KAN = optim.Adam(KAN_model.parameters(), lr=lr_kan)
@@ -141,18 +142,18 @@ def main(hidden_conv, hidden_kan, grids, lr_conv, lr_kan, momentum_conv, momentu
             model.train()
             correct = 0
 
-            for data, target in train_loader:
-                data, target = data.to(device), target.to(device)
-                optimizer.zero_grad()
-                output = model(data)
-                loss = loss_fn(output, target)
-                loss.backward()
-                optimizer.step()
+            # for data, target in train_loader:
+            #     data, target = data.to(device), target.to(device)
+            #     optimizer.zero_grad()
+            #     output = model(data)
+            #     loss = loss_fn(output, target)
+            #     loss.backward()
+            #     optimizer.step()
 
-                pred = output.argmax(dim=1, keepdim=True)
-                correct += pred.eq(target.view_as(pred)).sum().item()
+            #     pred = output.argmax(dim=1, keepdim=True)
+            #     correct += pred.eq(target.view_as(pred)).sum().item()
 
-            train_acc_conv = correct / len(train_loader.dataset)
+            # train_acc_conv = correct / len(train_loader.dataset)
             
             # Train the KAN model
             KAN_model.train()
@@ -170,7 +171,7 @@ def main(hidden_conv, hidden_kan, grids, lr_conv, lr_kan, momentum_conv, momentu
 
             train_acc_kan = correct / len(train_loader.dataset)
 
-            train_acc = [train_acc_conv, train_acc_kan]
+            train_acc = [100, train_acc_kan]
 
             KAN_model.eval()
             model.eval()
@@ -181,8 +182,8 @@ def main(hidden_conv, hidden_kan, grids, lr_conv, lr_kan, momentum_conv, momentu
                 for data, target in test_loader:
                     data, target = data.to(device), target.to(device)
                     output = [model(data),KAN_model(data)]
-                    test_loss[0] += loss_fn(output[0], target).item() * data.size(0)
-                    test_loss[1] += loss_fn(output[1], target).item() * data.size(0)
+                    # test_loss[0] += loss_fn(output[0], target).item() * data.size(0)
+                    test_loss[1] += loss_fn_KAN(output[1], target).item() * data.size(0)
                     pred = [output[0].argmax(dim=1, keepdim=True), output[1].argmax(dim=1, keepdim=True)]
                     correct[0] += pred[0].eq(target.view_as(pred[0])).sum().item()
                     correct[1] += pred[1].eq(target.view_as(pred[1])).sum().item()
@@ -194,7 +195,7 @@ def main(hidden_conv, hidden_kan, grids, lr_conv, lr_kan, momentum_conv, momentu
             test_acc[1] = correct[1] / len(test_loader.dataset)
 
             # Update the learning rate
-            scheduler.step()
+            scheduler_KAN.step()
             # print training and testing accuracy for each model
             print(f"Epoch {epoch}:")
             print(f"Conventional model: Train accuracy: {train_acc[0]*100:.2f}, Test accuracy: {test_acc[0]*100:.2f}    VS   KAN model: Train accuracy: {train_acc[1]*100:.2f}, Test accuracy: {test_acc[1]*100:.2f}")
