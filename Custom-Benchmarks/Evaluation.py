@@ -3,7 +3,7 @@ import torch
 from torch.nn import CrossEntropyLoss
 from torch.optim import Adam
 from torchvision import transforms
-from torchvision.datasets import MNIST
+from torchvision.datasets import MNIST, CIFAR100
 from torchvision.transforms import ToTensor, RandomCrop
 
 from avalanche.benchmarks import nc_benchmark
@@ -31,7 +31,7 @@ from avalanche.logging import (
     TensorboardLogger,
 )
 from avalanche.training.plugins import EvaluationPlugin
-from avalanche.training.supervised import Naive
+from avalanche.training.supervised import EWC,Naive
 
 from Scaled_KAN import *
 
@@ -54,38 +54,68 @@ def main(args):
     )
     
     # Prepare the data
-    mnist_train = MNIST(
-        root=default_dataset_location("mnist"),
-        train=True,
-        download=True,
-        transform=train_transform,
-    )
-    mnist_test = MNIST(
-        root=default_dataset_location("mnist"),
-        train=False,
-        download=True,
-        transform=test_transform,
-    )
-    benchmark = nc_benchmark(
-        train_dataset=mnist_train, test_dataset=mnist_test, n_experiences=5,
-        task_labels=False, seed=1234
-    )
+    if args.dataset == "mnist":
+        mnist_train = MNIST(
+            root=default_dataset_location("mnist"),
+            train=True,
+            download=True,
+            transform=train_transform,
+        )
+        mnist_test = MNIST(
+            root=default_dataset_location("mnist"),
+            train=False,
+            download=True,
+            transform=test_transform,
+        )
+        benchmark = nc_benchmark(
+            train_dataset=mnist_train, test_dataset=mnist_test, n_experiences=5,
+            task_labels=False, seed=args.seed
+        )
+    elif args.dataset == "cifar100":
+        cifar_train = CIFAR100(
+            root=default_dataset_location("cifar100"),
+            train=True,
+            download=True,
+            transform=train_transform,
+        )
+        cifar_test = CIFAR100(
+            root=default_dataset_location("cifar100"),
+            train=False,
+            download=True,
+            transform=test_transform,
+        )
+        benchmark = nc_benchmark(
+            train_dataset=cifar_train, test_dataset=cifar_test, n_experiences=5,
+            task_labels=False, seed=args.seed
+        )
 
-    # MODEL CREATION
-    model = SimpleMLP(num_classes=benchmark.n_classes)
-    print(model)
-    # model = FastKAN(layers_hidden=[784,32,10], num_grids=4, device=device)
-    # print(model)
-    # DEFINE THE EVALUATION PLUGIN AND LOGGER
-    # The evaluation plugin manages the metrics computation.
-    # It takes as argument a list of metrics and a list of loggers.
-    # The evaluation plugin calls the loggers to serialize the metrics
-    # and save them in persistent memory or print them in the standard output.
+    # MODEL SELECTION
+    architecture = "[784,512,10]"
+    if args.model == "SimpleMLP":
+        model = SimpleMLP(
+            num_classes=benchmark.n_classes,
+            input_size=28 * 28,
+            hidden_size=512,
+            hidden_layers=1
+        )
+    elif args.model =="FastKAN":
+        if args.dataset == "mnist":
+            model = FastKAN(
+                layers_hidden=[784,512,10],
+                num_grids=2,
+                device=device
+            )
+        elif args.dataset == "cifar100":
+            model = FastKAN(
+                layers_hidden=[3072,64,100],
+                num_grids=4,
+                device=device
+            )
 
     # log to text file
     text_logger = TextLogger(open("log.txt", "a"))
 
-    csv_logger = CSVLogger()
+    csv_logger = CSVLogger(log_folder='results_'+args.dataset+"_"+args.model+"_"+architecture)
 
     tb_logger = TensorboardLogger()
 
@@ -111,49 +141,50 @@ def main(args):
         forgetting_metrics(experience=True, stream=True),
         bwt_metrics(experience=True, stream=True),
         forward_transfer_metrics(experience=True, stream=True),
-        cpu_usage_metrics(
-            minibatch=True,
-            epoch=True,
-            epoch_running=True,
-            experience=True,
-            stream=True,
-        ),
-        timing_metrics(
-            minibatch=True,
-            epoch=True,
-            epoch_running=True,
-            experience=True,
-            stream=True,
-        ),
-        ram_usage_metrics(
-            every=0.5, minibatch=True, epoch=True, experience=True, stream=True
-        ),
-        gpu_usage_metrics(
-            args.cuda,
-            every=0.5,
-            minibatch=True,
-            epoch=True,
-            experience=True,
-            stream=True,
-        ),
-        disk_usage_metrics(minibatch=True, epoch=True, experience=True, stream=True),
+        # cpu_usage_metrics(
+        #     minibatch=True,
+        #     epoch=True,
+        #     epoch_running=True,
+        #     experience=True,
+        #     stream=True,
+        # ),
+        # timing_metrics(
+        #     minibatch=True,
+        #     epoch=True,
+        #     epoch_running=True,
+        #     experience=True,
+        #     stream=True,
+        # ),
+        # ram_usage_metrics(
+        #     every=0.5, minibatch=True, epoch=True, experience=True, stream=True
+        # ),
+        # gpu_usage_metrics(
+        #     args.cuda,
+        #     every=0.5,
+        #     minibatch=True,
+        #     epoch=True,
+        #     experience=True,
+        #     stream=True,
+        # ),
+        # disk_usage_metrics(minibatch=True, epoch=True, experience=True, stream=True),
         MAC_metrics(minibatch=True, epoch=True, experience=True),
         labels_repartition_metrics(on_train=True, on_eval=True),
         loggers=[text_logger, csv_logger, tb_logger],
         collect_all=True,
-    )  # collect all metrics (set to True by default)
+    )  # collect all metrics (set to True by default)width
     
     # CREATE THE STRATEGY INSTANCE (NAIVE)
-    cl_strategy = Naive(
+    cl_strategy = EWC(
         model=model,
-        optimizer=Adam(model.parameters(), lr=1e-3, betas=(0.9, 0.999)),
+        optimizer=Adam(model.parameters(), lr=args.lr, betas=(0.9, 0.999)),
         criterion=CrossEntropyLoss(),
+        ewc_lambda=0.9,
         train_mb_size=500,
-        train_epochs=1,
+        train_epochs=args.epochs,
         eval_mb_size=100,
         device=device,
         evaluator=eval_plugin,
-        eval_every=1,
+        eval_every=args.epochs+1,
     )
     
     # TRAINING LOOP
@@ -163,9 +194,6 @@ def main(args):
         print("Start of experience: ", experience.current_experience)
         print("Current Classes: ", experience.classes_in_this_experience)
 
-        # train returns a dictionary containing last recorded value
-        # for each metric.
-        print(experience.classes_seen_so_far)
         res = cl_strategy.train(experiences=experience, eval_streams=[benchmark.test_stream])
         print("Training completed")
 
@@ -187,11 +215,11 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--cuda",
-        type=int,
-        default=0,
-        help="Select zero-indexed cuda device. -1 to use CPU.",
-    )
+    parser.add_argument("--cuda", type=int, default=0, help="Select zero-indexed cuda device. -1 to use CPU.")
+    parser.add_argument("--model", type=str, default="SimpleMLP", help="Select model to use: SimpleMLP or FastKAN")
+    parser.add_argument("--dataset", type=str, default="mnist", help="Select dataset to use: mnist or cifar100")
+    parser.add_argument("--seed", type=int, default=1234, help="Random seed")
+    parser.add_argument("--lr", type=float, default=0.001, help="Learning rate")
+    parser.add_argument("--epochs", type=int, default=5, help="Number of epochs")
     args = parser.parse_args()
     main(args)

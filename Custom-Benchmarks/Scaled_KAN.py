@@ -86,10 +86,12 @@ class FastKANLayer(nn.Module):
         self.use_base_update = use_base_update
         
         if use_base_update:
-            self.base_activation = base_activation
+            self.base_activation = base_activation 
             self.base_linear = nn.Linear(input_dim, output_dim)
 
     def forward(self, x, use_layernorm=True):
+        x = x.contiguous()
+        x = x.view(x.size(0), self.input_dim)
         if self.layernorm is not None and use_layernorm:
             spline_basis = self.rbf(self.layernorm(x))
         else:
