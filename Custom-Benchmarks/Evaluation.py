@@ -23,6 +23,7 @@ from avalanche.evaluation.metrics import (
     forward_transfer_metrics,
     class_accuracy_metrics,
     amca_metrics,
+    ExperienceForgetting,
 )
 from avalanche.models import SimpleMLP
 from avalanche.logging import (
@@ -41,20 +42,20 @@ def main(args):
         f"cuda:{args.cuda}" if torch.cuda.is_available() and args.cuda >= 0 else "cpu"
     )
 
-    # Transform dataset
-    train_transform = transforms.Compose(
-        [
-            RandomCrop(28, padding=4),
-            ToTensor(),
-            transforms.Normalize((0.1307,), (0.3081,)) # Normalise MNIST dataset
-        ]
-    )
-    test_transform = transforms.Compose(
-        [ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
-    )
-    
     # Prepare the data
     if args.dataset == "mnist":
+        # Transform dataset
+        train_transform = transforms.Compose(
+            [
+                RandomCrop(28, padding=4),
+                ToTensor(),
+                transforms.Normalize((0.1307,), (0.3081,)) # Normalise MNIST dataset
+            ]
+        )
+        test_transform = transforms.Compose(
+            [ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
+        )
+        
         mnist_train = MNIST(
             root=default_dataset_location("mnist"),
             train=True,
@@ -72,6 +73,16 @@ def main(args):
             task_labels=False, seed=args.seed
         )
     elif args.dataset == "cifar100":
+        
+        train_transform = transforms.Compose([
+            ToTensor(),
+            transforms.Normalize((0.5071, 0.4866, 0.4409), (0.2009, 0.1984, 0.2023)),
+        ])
+        test_transform = transforms.Compose([
+            ToTensor(),
+            transforms.Normalize((0.5071, 0.4866, 0.4409), (0.2009, 0.1984, 0.2023)),
+        ])
+
         cifar_train = CIFAR100(
             root=default_dataset_location("cifar100"),
             train=True,
@@ -90,24 +101,23 @@ def main(args):
         )
 
     # MODEL SELECTION
-    architecture = "[784,512,10]"
     if args.model == "SimpleMLP":
         model = SimpleMLP(
             num_classes=benchmark.n_classes,
             input_size=28 * 28,
-            hidden_size=512,
+            hidden_size=args.hidden,
             hidden_layers=1
         )
     elif args.model =="FastKAN":
         if args.dataset == "mnist":
             model = FastKAN(
-                layers_hidden=[784,512,10],
-                num_grids=2,
+                layers_hidden=[784,args.hidden,10],
+                num_grids=4,
                 device=device
             )
         elif args.dataset == "cifar100":
             model = FastKAN(
-                layers_hidden=[3072,64,100],
+                layers_hidden=[32*32*3,args.hidden,100],
                 num_grids=4,
                 device=device
             )
@@ -115,25 +125,20 @@ def main(args):
     # log to text file
     text_logger = TextLogger(open("log.txt", "a"))
 
-    csv_logger = CSVLogger(log_folder='results_'+args.dataset+"_"+args.model+"_"+architecture)
+    csv_logger = CSVLogger(log_folder='results_'+args.dataset+"_"+args.model+"_"+str(args.hidden))
 
-    tb_logger = TensorboardLogger()
+    tb_logger = TensorboardLogger(tb_log_dir='tb_log_'+args.dataset+"_"+args.model+"_"+str(args.hidden))
 
     eval_plugin = EvaluationPlugin(
         accuracy_metrics(
             minibatch=True,
-            epoch=True,
-            epoch_running=True,
-            experience=True,
             stream=True,
         ),
         loss_metrics(
-            minibatch=True,
             epoch=True,
-            epoch_running=True,
-            experience=True,
             stream=True,
         ),
+        ExperienceForgetting(),
         class_accuracy_metrics(
             epoch=True, stream=True, classes=list(range(benchmark.n_classes))
         ),
@@ -141,32 +146,6 @@ def main(args):
         forgetting_metrics(experience=True, stream=True),
         bwt_metrics(experience=True, stream=True),
         forward_transfer_metrics(experience=True, stream=True),
-        # cpu_usage_metrics(
-        #     minibatch=True,
-        #     epoch=True,
-        #     epoch_running=True,
-        #     experience=True,
-        #     stream=True,
-        # ),
-        # timing_metrics(
-        #     minibatch=True,
-        #     epoch=True,
-        #     epoch_running=True,
-        #     experience=True,
-        #     stream=True,
-        # ),
-        # ram_usage_metrics(
-        #     every=0.5, minibatch=True, epoch=True, experience=True, stream=True
-        # ),
-        # gpu_usage_metrics(
-        #     args.cuda,
-        #     every=0.5,
-        #     minibatch=True,
-        #     epoch=True,
-        #     experience=True,
-        #     stream=True,
-        # ),
-        # disk_usage_metrics(minibatch=True, epoch=True, experience=True, stream=True),
         MAC_metrics(minibatch=True, epoch=True, experience=True),
         labels_repartition_metrics(on_train=True, on_eval=True),
         loggers=[text_logger, csv_logger, tb_logger],
@@ -178,13 +157,13 @@ def main(args):
         model=model,
         optimizer=Adam(model.parameters(), lr=args.lr, betas=(0.9, 0.999)),
         criterion=CrossEntropyLoss(),
-        ewc_lambda=0.9,
+        ewc_lambda=1,
         train_mb_size=500,
         train_epochs=args.epochs,
         eval_mb_size=100,
         device=device,
         evaluator=eval_plugin,
-        eval_every=args.epochs+1,
+        eval_every=args.epochs
     )
     
     # TRAINING LOOP
@@ -221,5 +200,6 @@ if __name__ == "__main__":
     parser.add_argument("--seed", type=int, default=1234, help="Random seed")
     parser.add_argument("--lr", type=float, default=0.001, help="Learning rate")
     parser.add_argument("--epochs", type=int, default=5, help="Number of epochs")
+    parser.add_argument("--hidden", type=int, default=512, help="Hidden layer size")
     args = parser.parse_args()
     main(args)

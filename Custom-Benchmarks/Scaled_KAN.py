@@ -92,6 +92,7 @@ class FastKANLayer(nn.Module):
     def forward(self, x, use_layernorm=True):
         x = x.contiguous()
         x = x.view(x.size(0), self.input_dim)
+        # print(f"X: {x.shape}")
         if self.layernorm is not None and use_layernorm:
             spline_basis = self.rbf(self.layernorm(x))
         else:

@@ -139,8 +139,8 @@ def main(hidden_conv, hidden_kan, grids, lr_conv, lr_kan, momentum_conv, momentu
         
         for epoch in range(15):
             # Train the conventional model
-            model.train()
-            correct = 0
+            # model.train()
+            # correct = 0
 
             # for data, target in train_loader:
             #     data, target = data.to(device), target.to(device)
@@ -216,7 +216,7 @@ def main(hidden_conv, hidden_kan, grids, lr_conv, lr_kan, momentum_conv, momentu
             results_df = pd.concat([results_df, new_row], ignore_index=True)
 
             # Save results to CSV
-            results_df.to_csv('training_results.csv', mode='a', header=not os.path.exists('training_results.csv'), index=False)
+            new_row.to_csv('training_results.csv', mode='a', header=not os.path.exists('training_results.csv'), index=False)
             
         # Store accuracies for plotting
         train_accs_conv.append(train_acc[0])
