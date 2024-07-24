@@ -13,11 +13,6 @@ from avalanche.evaluation.metrics import (
     accuracy_metrics,
     labels_repartition_metrics,
     loss_metrics,
-    cpu_usage_metrics,
-    timing_metrics,
-    gpu_usage_metrics,
-    ram_usage_metrics,
-    disk_usage_metrics,
     MAC_metrics,
     bwt_metrics,
     forward_transfer_metrics,
@@ -31,7 +26,7 @@ from avalanche.logging import (
     CSVLogger,
     TensorboardLogger,
 )
-from avalanche.training.plugins import EvaluationPlugin
+from avalanche.training.plugins import EvaluationPlugin, EWCPlugin, ReplayPlugin
 from avalanche.training.supervised import EWC,Naive
 
 from Scaled_KAN import *
@@ -76,7 +71,7 @@ def main(args):
         
         train_transform = transforms.Compose([
             ToTensor(),
-            transforms.Normalize((0.5071, 0.4866, 0.4409), (0.2009, 0.1984, 0.2023)),
+            transforms.Normalize((0.5071, 0.4866, 0.4409), (0.2009, 0.1984, 0.2023)), # Normalise CIFAR100 dataset
         ])
         test_transform = transforms.Compose([
             ToTensor(),
@@ -96,18 +91,26 @@ def main(args):
             transform=test_transform,
         )
         benchmark = nc_benchmark(
-            train_dataset=cifar_train, test_dataset=cifar_test, n_experiences=5,
+            train_dataset=cifar_train, test_dataset=cifar_test, n_experiences=20,
             task_labels=False, seed=args.seed
         )
 
     # MODEL SELECTION
     if args.model == "SimpleMLP":
-        model = SimpleMLP(
-            num_classes=benchmark.n_classes,
-            input_size=28 * 28,
-            hidden_size=args.hidden,
-            hidden_layers=1
-        )
+        if args.dataset == "mnist":
+            model = SimpleMLP(
+                num_classes=benchmark.n_classes,
+                input_size=28 * 28,
+                hidden_size=args.hidden,
+                hidden_layers=1
+            )
+        elif args.dataset == "cifar100":
+            model = SimpleMLP(
+                num_classes=benchmark.n_classes,
+                input_size=32*32*3,
+                hidden_size=args.hidden,
+                hidden_layers=1
+            )
     elif args.model =="FastKAN":
         if args.dataset == "mnist":
             model = FastKAN(
@@ -117,7 +120,7 @@ def main(args):
             )
         elif args.dataset == "cifar100":
             model = FastKAN(
-                layers_hidden=[32*32*3,args.hidden,100],
+                layers_hidden=[32*32*3,args.hidden,128,100],
                 num_grids=4,
                 device=device
             )
@@ -125,7 +128,7 @@ def main(args):
     # log to text file
     text_logger = TextLogger(open("log.txt", "a"))
 
-    csv_logger = CSVLogger(log_folder='results_'+args.dataset+"_"+args.model+"_"+str(args.hidden))
+    csv_logger = CSVLogger(log_folder='results_'+args.dataset+"_"+args.model+"_"+str(args.hidden)+"_"+str(args.epochs))
 
     tb_logger = TensorboardLogger(tb_log_dir='tb_log_'+args.dataset+"_"+args.model+"_"+str(args.hidden))
 
@@ -152,17 +155,20 @@ def main(args):
         collect_all=True,
     )  # collect all metrics (set to True by default)width
     
+    ewc = EWCPlugin(ewc_lambda=1)
+    replay = ReplayPlugin(mem_size=2000)
+
     # CREATE THE STRATEGY INSTANCE (NAIVE)
-    cl_strategy = EWC(
+    cl_strategy = Naive(
         model=model,
         optimizer=Adam(model.parameters(), lr=args.lr, betas=(0.9, 0.999)),
         criterion=CrossEntropyLoss(),
-        ewc_lambda=1,
         train_mb_size=500,
         train_epochs=args.epochs,
         eval_mb_size=100,
         device=device,
         evaluator=eval_plugin,
+        plugins=[ewc],
         eval_every=args.epochs
     )
     
@@ -190,7 +196,7 @@ def main(args):
     # metrics without avalanche.
     all_metrics = cl_strategy.evaluator.get_all_metrics()
     print(f"Stored metrics: {list(all_metrics.keys())}")
-
+    torch.save(model.state_dict(), args.dataset+"_"+args.model+"_"+str(args.hidden)+".pth")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
