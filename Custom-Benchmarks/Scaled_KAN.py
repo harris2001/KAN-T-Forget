@@ -79,20 +79,20 @@ class FastKANLayer(nn.Module):
         # Normalise layer input
         if use_layernorm:
             assert input_dim > 1, "Do not use layernorms on 1D inputs. Set `use_layernorm=False`."
-            self.layernorm = nn.LayerNorm(input_dim)
+            self.layernorm = nn.LayerNorm(input_dim,device=device)
         
         self.rbf = RadialBasisFunction(grid_min, grid_max, num_grids, device=device)
-        self.spline_linear = SplineLinear(input_dim * num_grids, output_dim, spline_weight_init_scale)
+        self.spline_linear = SplineLinear(input_dim * num_grids, output_dim, spline_weight_init_scale, device=device)
         self.use_base_update = use_base_update
         
         if use_base_update:
             self.base_activation = base_activation 
-            self.base_linear = nn.Linear(input_dim, output_dim)
+            self.base_linear = nn.Linear(input_dim, output_dim, device=device)
 
     def forward(self, x, use_layernorm=True):
         x = x.contiguous()
         x = x.view(x.size(0), self.input_dim)
-        # print(f"X: {x.shape}")
+
         if self.layernorm is not None and use_layernorm:
             spline_basis = self.rbf(self.layernorm(x))
         else:
