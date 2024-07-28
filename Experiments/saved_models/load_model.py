@@ -1,4 +1,8 @@
 import torch 
+import os
+
+#set current directory to saved_models
+os.chdir('saved_models')
 
 def load(model_path):
     """

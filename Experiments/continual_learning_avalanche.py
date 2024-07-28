@@ -29,7 +29,12 @@ from avalanche.logging import (
 from avalanche.training.plugins import EvaluationPlugin, EWCPlugin, ReplayPlugin
 from avalanche.training.supervised import EWC,Naive
 
-from Scaled_KAN import *
+import os
+
+os.chdir('../Models')
+from Scaled_KAN import FastKAN
+os.chdir('../Experiments')
+
 
 def main(args):
     # Choose GPU to run experiment on
@@ -126,11 +131,11 @@ def main(args):
             )
 
     # log to text file
-    text_logger = TextLogger(open("log.txt", "a"))
+    text_logger = TextLogger(open("results/log.txt", "a"))
 
-    csv_logger = CSVLogger(log_folder='results_'+args.dataset+"_"+args.model+"_"+str(args.hidden)+"_"+str(args.rnd))
+    csv_logger = CSVLogger(log_folder='results/csv/results_'+args.dataset+"_"+args.model+"_"+str(args.hidden)+"_"+str(args.rnd))
 
-    tb_logger = TensorboardLogger(tb_log_dir='tb_log_'+args.dataset+"_"+args.model+"_"+str(args.hidden)+"_"+str(args.rnd))
+    tb_logger = TensorboardLogger(tb_log_dir='results/tensorboard/tb_log_'+args.dataset+"_"+args.model+"_"+str(args.hidden)+"_"+str(args.rnd))
 
     eval_plugin = EvaluationPlugin(
         accuracy_metrics(
@@ -186,8 +191,8 @@ def main(args):
         # test returns a dictionary with the last metric collected during
         # evaluation on that stream
         results.append(cl_strategy.eval(benchmark.test_stream))
-        # # 
-        # break
+        # 
+        break
     print(f"Test metrics:\n{results}")
 
     # Dict with all the metric curves,

@@ -11,7 +11,11 @@ import torch.optim as optim
 import matplotlib.pyplot as plt
 
 import os
-from Scaled_KAN import *
+import sys
+
+sys.path.append(os.path.abspath(os.path.join(os.getcwd(), '..', 'Models')))
+
+from Scaled_KAN import FastKAN
 
 
 def get_conventional(hidden):
