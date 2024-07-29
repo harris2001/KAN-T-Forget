@@ -41,11 +41,12 @@ def lamaml_scifar100(override_args=None):
                                              return_task_id=True)
 
     # Loggers and metrics
-    interactive_logger = avl.logging.InteractiveLogger()
+    csv_logger = avl.logging.CSVLogger('../results/csv/lamaml_scifar100')
+    tensorboard_logger = avl.logging.TensorboardLogger('../results/tensorboard/lamaml_scifar100')
 
     evaluation_plugin = avl.training.plugins.EvaluationPlugin(
         metrics.accuracy_metrics(epoch=True, experience=True, stream=True),
-        loggers=[interactive_logger])
+        loggers=[csv_logger, tensorboard_logger])
 
     # Buffer
     rs_buffer = ReservoirSamplingBuffer(max_size=args.mem_size)

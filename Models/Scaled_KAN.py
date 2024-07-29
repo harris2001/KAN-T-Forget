@@ -77,8 +77,8 @@ class FastKANLayer(nn.Module):
         self.device = device
 
         # Normalise layer input
-        if use_layernorm:
-            assert input_dim > 1, "Do not use layernorms on 1D inputs. Set `use_layernorm=False`."
+        if use_layernorm and input_dim > 1:
+            # assert input_dim > 1, "Do not use layernorms on 1D inputs. Set `use_layernorm=False`."
             self.layernorm = nn.LayerNorm(input_dim,device=device)
         
         self.rbf = RadialBasisFunction(grid_min, grid_max, num_grids, device=device)

@@ -30,11 +30,10 @@ from avalanche.training.plugins import EvaluationPlugin, EWCPlugin, ReplayPlugin
 from avalanche.training.supervised import EWC,Naive
 
 import os
+import sys
 
-os.chdir('../Models')
+sys.path.append(os.path.abspath(os.path.join(os.getcwd(),'../','Models')))
 from Scaled_KAN import FastKAN
-os.chdir('../Experiments')
-
 
 def main(args):
     # Choose GPU to run experiment on
@@ -119,8 +118,8 @@ def main(args):
     elif args.model =="FastKAN":
         if args.dataset == "mnist":
             model = FastKAN(
-                layers_hidden=[784,64,128,10],
-                num_grids=8,
+                layers_hidden=[784,args.hidden,10],
+                num_grids=20,
                 device=device
             )
         elif args.dataset == "cifar10":
@@ -191,7 +190,6 @@ def main(args):
         # test returns a dictionary with the last metric collected during
         # evaluation on that stream
         results.append(cl_strategy.eval(benchmark.test_stream))
-        # 
         break
     print(f"Test metrics:\n{results}")
 
@@ -202,7 +200,7 @@ def main(args):
     # metrics without avalanche.
     all_metrics = cl_strategy.evaluator.get_all_metrics()
     print(f"Stored metrics: {list(all_metrics.keys())}")
-    torch.save(model.state_dict(), args.dataset+"_"+args.model+"_"+str(args.hidden)+"_"+str(args.rnd)+".pth")
+    torch.save(model.state_dict(), "saved_models/continual_"+args.dataset+"_"+args.model+"_"+str(args.hidden)+"_"+str(args.rnd)+".pth")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
