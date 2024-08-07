@@ -72,17 +72,20 @@ def ewc_pmnist(override_args=None):
 
     benchmark = avl.benchmarks.PermutedMNIST(10)
     # model = MLP(hidden_size=args['hidden_size'], hidden_layers=args['hidden_layers'],
-    #             drop_rate=args['dropout'])
-    model = FastKAN(layers_hidden=[28*28,2**5,10], num_grids=4, grid_min=2, grid_max=4, device=device)
+    #             drop_rate=args['dropout']) # 406528 params
+    model = FastKAN(layers_hidden=[28*28,32,10], grid_min=4, grid_max=5, device=device) # 406528 params
     model.to(device)
     
     criterion = CrossEntropyLoss()
 
-    interactive_logger = avl.logging.InteractiveLogger()
+    # interactive_logger = avl.logging.InteractiveLogger()
+    tensorboard_logger = avl.logging.TensorboardLogger('../results/tensorboard/ewc_pmnist_KAN')
+    csv_logger = avl.logging.CSVLogger('../results/csv/ewc_pmnist_KAN')
 
     evaluation_plugin = avl.training.plugins.EvaluationPlugin(
         metrics.accuracy_metrics(epoch=True, experience=True, stream=True),
-        loggers=[interactive_logger])
+        metrics.forgetting_metrics(experience=True, stream=True),
+        loggers=[tensorboard_logger, csv_logger])
 
     cl_strategy = avl.training.EWC(
         model, SGD(model.parameters(), lr=args['learning_rate']), criterion,
