@@ -7,6 +7,12 @@ from torch import nn
 from avalanche.models import IncrementalClassifier
 from avalanche.models import BaseModel
 
+import os
+import sys
+
+sys.path.append(os.path.abspath(os.path.join(os.getcwd(), '../','../', 'Models')))
+from Scaled_KAN import *
+
 class MLP(nn.Module, BaseModel):
     def __init__(self, input_size=28 * 28, hidden_size=256, hidden_layers=2,
                  output_size=10, drop_rate=0, relu_act=True, initial_out_features=0):
@@ -47,45 +53,29 @@ class MLP(nn.Module, BaseModel):
         x = x.view(x.size(0), self._input_size)
         return self.features(x)
 
-
-class LwFCEPenalty(avl.training.LwF):
-    """This wrapper around LwF computes the total loss
-    by diminishing the cross-entropy contribution over time,
-    as per the paper
-    "Three scenarios for continual learning" by van de Ven et. al. (2018).
-    https://arxiv.org/pdf/1904.07734.pdf
-    The loss is L_tot = (1/n_exp_so_far) * L_cross_entropy +
-                        alpha[current_exp] * L_distillation
+def ewc_pmnist(override_args=None):
     """
-    def _before_backward(self, **kwargs):
-        self.loss *= float(1/(self.clock.train_exp_counter+1))
-        super()._before_backward(**kwargs)
+    "Overcoming catastrophic forgetting in neural networks" by Kirkpatrick et. al. (2017).
+    https://www.pnas.org/content/114/13/3521
 
-
-def lwf_smnist(override_args=None):
+    Results are below the original paper, which scores around 94%.
     """
-    "Learning without Forgetting" by Li et. al. (2016).
-    http://arxiv.org/abs/1606.09282
-    Since experimental setup of the paper is quite outdated and not
-    easily reproducible, this experiment is based on
-    "Three scenarios for continual learning" by van de Ven et. al. (2018).
-    https://arxiv.org/pdf/1904.07734.pdf
-
-    The hyper-parameter alpha controlling the regularization is increased over time, resulting
-    in a regularization of  (1- 1/n_exp_so_far) * L_distillation
-    """
-    args = {'cuda': 0,
-                                'lwf_alpha': [0, 0.5, 1.33333, 2.25, 3.2],
-                                'lwf_temperature': 2, 'epochs': 21,
-                                'layers': 1, 'hidden_size': 200,
-                                'learning_rate': 0.001, 'train_mb_size': 128,
+    args = {'cuda': 0, 'ewc_lambda': 1, 'hidden_size': 512,
+                                'hidden_layers': 1, 'epochs': 10, 'dropout': 0,
+                                'ewc_mode': 'separate', 'ewc_decay': None,
+                                'learning_rate': 0.001, 'train_mb_size': 256,
                                 'seed': 1234}
     torch.manual_seed(args['seed'])
-    device = torch.device(f"cuda:{args['cuda']}" if torch.cuda.is_available() and args['cuda'] >= 0 else "cpu")
+    device = torch.device(f"cuda:{args['cuda']}"
+                          if torch.cuda.is_available() and
+                          args['cuda'] >= 0 else "cpu")
 
-    benchmark = avl.benchmarks.SplitMNIST(5, return_task_id=False)
-    model = MLP(hidden_size=args["hidden_size"], hidden_layers=args["layers"],
-                initial_out_features=0, relu_act=False)
+    benchmark = avl.benchmarks.PermutedMNIST(10)
+    # model = MLP(hidden_size=args['hidden_size'], hidden_layers=args['hidden_layers'],
+    #             drop_rate=args['dropout'])
+    model = FastKAN(layers_hidden=[28*28,2**5,10], num_grids=4, grid_min=2, grid_max=4, device=device)
+    model.to(device)
+    
     criterion = CrossEntropyLoss()
 
     interactive_logger = avl.logging.InteractiveLogger()
@@ -94,21 +84,20 @@ def lwf_smnist(override_args=None):
         metrics.accuracy_metrics(epoch=True, experience=True, stream=True),
         loggers=[interactive_logger])
 
-    cl_strategy = LwFCEPenalty(
-        model, SGD(model.parameters(), lr=args["learning_rate"]), criterion,
-        alpha=args["lwf_alpha"], temperature=args["lwf_temperature"],
-        train_mb_size=args["train_mb_size"], train_epochs=args["epochs"],
+    cl_strategy = avl.training.EWC(
+        model, SGD(model.parameters(), lr=args['learning_rate']), criterion,
+        ewc_lambda=args['ewc_lambda'], mode=args['ewc_mode'], decay_factor=args['ewc_decay'],
+        train_mb_size=args['train_mb_size'], train_epochs=args['epochs'], eval_mb_size=128,
         device=device, evaluator=evaluation_plugin)
 
     res = None
     for experience in benchmark.train_stream:
-        # cl_strategy.train(experience)
-        print(experience.current_experience)
-        # res = cl_strategy.eval(benchmark.test_stream)
+        cl_strategy.train(experience)
+        res = cl_strategy.eval(benchmark.test_stream)
 
     return res
 
 
 if __name__ == '__main__':
-    res = lwf_smnist()
+    res = ewc_pmnist()
     print(res)
