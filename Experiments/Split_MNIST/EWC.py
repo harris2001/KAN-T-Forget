@@ -12,6 +12,7 @@ import sys
 
 sys.path.append(os.path.abspath(os.path.join(os.getcwd(), '../','../', 'Models')))
 from Scaled_KAN import *
+from torchKAN import *
 
 class MLP(nn.Module, BaseModel):
     def __init__(self, input_size=28 * 28, hidden_size=256, hidden_layers=2,
@@ -72,8 +73,9 @@ def ewc_pmnist(override_args=None):
 
     benchmark = avl.benchmarks.PermutedMNIST(10)
     # model = MLP(hidden_size=args['hidden_size'], hidden_layers=args['hidden_layers'],
-    #             drop_rate=args['dropout']) # 406528 params
-    model = FastKAN(layers_hidden=[28*28,32,10], grid_min=4, grid_max=5, device=device) # 406528 params
+    #             drop_rate=args['dropout']) # 668672 params
+    # model = FastKAN(layers_hidden=[28*28,32,10], grid_min=4, grid_max=5, device=device) # 406528 params
+    model = KAN(layers_hidden=[28*28,32,10],grid_size=5, spline_order=5)
     model.to(device)
     
     criterion = CrossEntropyLoss()
@@ -87,11 +89,14 @@ def ewc_pmnist(override_args=None):
         metrics.forgetting_metrics(experience=True, stream=True),
         loggers=[tensorboard_logger, csv_logger])
 
-    cl_strategy = avl.training.EWC(
-        model, SGD(model.parameters(), lr=args['learning_rate']), criterion,
-        ewc_lambda=args['ewc_lambda'], mode=args['ewc_mode'], decay_factor=args['ewc_decay'],
-        train_mb_size=args['train_mb_size'], train_epochs=args['epochs'], eval_mb_size=128,
-        device=device, evaluator=evaluation_plugin)
+    # cl_strategy = avl.training.EWC(
+    #     model, SGD(model.parameters(), lr=args['learning_rate']), criterion,
+    #     ewc_lambda=args['ewc_lambda'], mode=args['ewc_mode'], decay_factor=args['ewc_decay'],
+    #     train_mb_size=args['train_mb_size'], train_epochs=args['epochs'], eval_mb_size=128,
+    #     device=device, evaluator=evaluation_plugin)
+    cl_strategy = avl.training.Naive(model, SGD(model.parameters(), lr=args['learning_rate']), criterion,
+                                     train_mb_size=args['train_mb_size'], train_epochs=args['epochs'],
+                                     eval_mb_size=128, device=device, evaluator=evaluation_plugin)
 
     res = None
     for experience in benchmark.train_stream:
