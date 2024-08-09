@@ -151,6 +151,9 @@ class KANLinear(torch.nn.Module):
         )
 
     def forward(self, x: torch.Tensor):
+        x = x.contiguous()
+        x = x.view(x.size(0), self.in_features)
+
         assert x.size(-1) == self.in_features
         original_shape = x.shape
         x = x.reshape(-1, self.in_features)

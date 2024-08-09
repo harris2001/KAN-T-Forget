@@ -1,0 +1,14 @@
+{
+    "Top1_Acc_Epoch/train_phase/train_stream/Task000": 0.9939511057241521,
+    "Top1_Acc_Exp/eval_phase/test_stream/Task000/Exp000": 0.48986125933831376,
+    "Top1_Acc_Exp/eval_phase/test_stream/Task000/Exp001": 0.5348953140578265,
+    "Top1_Acc_Exp/eval_phase/test_stream/Task000/Exp002": 0.6944585663446874,
+    "Top1_Acc_Exp/eval_phase/test_stream/Task000/Exp003": 0.8099861303744799,
+    "Top1_Acc_Exp/eval_phase/test_stream/Task000/Exp004": 0.992964824120603,
+    "Top1_Acc_Stream/eval_phase/test_stream/Task000": 0.7085,
+    "StreamForgetting/eval_phase/test_stream": 0.35812129766701817,
+    "ExperienceForgetting/eval_phase/test_stream/Task000/Exp000": 0.5080042689434365,
+    "ExperienceForgetting/eval_phase/test_stream/Task000/Exp001": 0.44815553339980063,
+    "ExperienceForgetting/eval_phase/test_stream/Task000/Exp002": 0.29740721911540413,
+    "ExperienceForgetting/eval_phase/test_stream/Task000/Exp003": 0.17891816920943138
+}
