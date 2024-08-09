@@ -3,56 +3,14 @@ import torch
 from torch.nn import CrossEntropyLoss
 from torch.optim import SGD
 from avalanche.evaluation import metrics as metrics
-from torch import nn
-from avalanche.models import IncrementalClassifier
-from avalanche.models import BaseModel
 
 import os
 import sys
 
 sys.path.append(os.path.abspath(os.path.join(os.getcwd(), '../','../', 'Models')))
 from Scaled_KAN import *
-from torchKAN import *
-
-class MLP(nn.Module, BaseModel):
-    def __init__(self, input_size=28 * 28, hidden_size=256, hidden_layers=2,
-                 output_size=10, drop_rate=0, relu_act=True, initial_out_features=0):
-        """
-        :param initial_out_features: if >0 override output size and build an
-            IncrementalClassifier with `initial_out_features` units as first.
-        """
-        super().__init__()
-        self._input_size = input_size
-
-        layers = nn.Sequential(*(nn.Linear(input_size, hidden_size),
-                                 nn.ReLU(inplace=True) if relu_act else nn.Tanh(),
-                                 nn.Dropout(p=drop_rate)))
-        for layer_idx in range(hidden_layers - 1):
-            layers.add_module(
-                f"fc{layer_idx + 1}", nn.Sequential(
-                    *(nn.Linear(hidden_size, hidden_size),
-                      nn.ReLU(inplace=True) if relu_act else nn.Tanh(),
-                      nn.Dropout(p=drop_rate))))
-
-        self.features = nn.Sequential(*layers)
-
-        if initial_out_features > 0:
-            self.classifier = IncrementalClassifier(in_features=hidden_size,
-                                                    initial_out_features=initial_out_features)
-        else:
-            self.classifier = nn.Linear(hidden_size, output_size)
-
-    def forward(self, x):
-        x = x.contiguous()
-        x = x.view(x.size(0), self._input_size)
-        x = self.features(x)
-        x = self.classifier(x)
-        return x
-
-    def get_features(self, x):
-        x = x.contiguous()
-        x = x.view(x.size(0), self._input_size)
-        return self.features(x)
+# from torchKAN import *
+# from wavKAN import *
 
 def ewc_pmnist(override_args=None):
     """
@@ -74,20 +32,20 @@ def ewc_pmnist(override_args=None):
     benchmark = avl.benchmarks.PermutedMNIST(10)
     # model = MLP(hidden_size=args['hidden_size'], hidden_layers=args['hidden_layers'],
     #             drop_rate=args['dropout']) # 668672 params
-    # model = FastKAN(layers_hidden=[28*28,32,10], grid_min=4, grid_max=5, device=device) # 406528 params
-    model = KAN(layers_hidden=[28*28,32,10],grid_size=5, spline_order=5)
+    model = FastKAN(layers_hidden=[28*28,32,10], grid_min=100, grid_max=5, device=device) # 406528 params
+    # model = KAN(layers_hidden=[784,32,10])
     model.to(device)
     
     criterion = CrossEntropyLoss()
 
     # interactive_logger = avl.logging.InteractiveLogger()
-    tensorboard_logger = avl.logging.TensorboardLogger('../results/tensorboard/ewc_pmnist_KAN')
-    csv_logger = avl.logging.CSVLogger('../results/csv/ewc_pmnist_KAN')
+    # tensorboard_logger = avl.logging.TensorboardLogger('../results/tensorboard/ewc_pmnist_KAN_2')
+    csv_logger = avl.logging.CSVLogger('../results/csv/ewc_pmnist_KAN_2')
 
     evaluation_plugin = avl.training.plugins.EvaluationPlugin(
         metrics.accuracy_metrics(epoch=True, experience=True, stream=True),
         metrics.forgetting_metrics(experience=True, stream=True),
-        loggers=[tensorboard_logger, csv_logger])
+        loggers=[csv_logger])
 
     # cl_strategy = avl.training.EWC(
     #     model, SGD(model.parameters(), lr=args['learning_rate']), criterion,
