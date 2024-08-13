@@ -2,18 +2,28 @@ affine_trainable: false
 auto_save: true
 base_fun_name: silu
 ckpt_path: ./model
-grid: 150
+grid: 25
 grid_eps: 1.0
 grid_range:
 - -1
 - 1
-k: 4
+k: 5
 mult_arity: 2
 round: 0
 sb_trainable: false
 sp_trainable: false
 state_id: 5
 symbolic.funs_name.0:
+- - '0'
+  - '0'
+- - '0'
+  - '0'
+- - '0'
+  - '0'
+- - '0'
+  - '0'
+- - '0'
+  - '0'
 - - '0'
   - '0'
 - - '0'
@@ -75,11 +85,16 @@ symbolic.funs_name.1:
   - '0'
   - '0'
   - '0'
+  - '0'
+  - '0'
+  - '0'
+  - '0'
+  - '0'
 symbolic_enabled: false
 width:
 - - 2
   - 0
-- - 20
+- - 25
   - 0
 - - 1
   - 0
