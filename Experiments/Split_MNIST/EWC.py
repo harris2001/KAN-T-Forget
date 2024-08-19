@@ -11,6 +11,7 @@ sys.path.append(os.path.abspath(os.path.join(os.getcwd(), '../','../', 'Models')
 from Scaled_KAN import *
 # from torchKAN import *
 # from wavKAN import *
+# from KANvolver import *
 
 def ewc_pmnist(override_args=None):
     """
@@ -32,8 +33,9 @@ def ewc_pmnist(override_args=None):
     benchmark = avl.benchmarks.PermutedMNIST(10)
     # model = MLP(hidden_size=args['hidden_size'], hidden_layers=args['hidden_layers'],
     #             drop_rate=args['dropout']) # 668672 params
-    model = FastKAN(layers_hidden=[28*28,32,10], grid_min=100, grid_max=5, device=device) # 406528 params
+    model = FastKAN(layers_hidden=[28*28,10], grid_min=100, grid_max=101, device=device) # 406528 params
     # model = KAN(layers_hidden=[784,32,10])
+    # model = KANvolver(layers_hidden=[32, 10], polynomial_order=3)
     model.to(device)
     
     criterion = CrossEntropyLoss()
@@ -47,14 +49,14 @@ def ewc_pmnist(override_args=None):
         metrics.forgetting_metrics(experience=True, stream=True),
         loggers=[csv_logger])
 
-    # cl_strategy = avl.training.EWC(
-    #     model, SGD(model.parameters(), lr=args['learning_rate']), criterion,
-    #     ewc_lambda=args['ewc_lambda'], mode=args['ewc_mode'], decay_factor=args['ewc_decay'],
-    #     train_mb_size=args['train_mb_size'], train_epochs=args['epochs'], eval_mb_size=128,
-    #     device=device, evaluator=evaluation_plugin)
-    cl_strategy = avl.training.Naive(model, SGD(model.parameters(), lr=args['learning_rate']), criterion,
-                                     train_mb_size=args['train_mb_size'], train_epochs=args['epochs'],
-                                     eval_mb_size=128, device=device, evaluator=evaluation_plugin)
+    cl_strategy = avl.training.EWC(
+        model, SGD(model.parameters(), lr=args['learning_rate']), criterion,
+        ewc_lambda=args['ewc_lambda'], mode=args['ewc_mode'], decay_factor=args['ewc_decay'],
+        train_mb_size=args['train_mb_size'], train_epochs=args['epochs'], eval_mb_size=128,
+        device=device, evaluator=evaluation_plugin)
+    # cl_strategy = avl.training.Naive(model, SGD(model.parameters(), lr=args['learning_rate']), criterion,
+    #                                  train_mb_size=args['train_mb_size'], train_epochs=args['epochs'],
+    #                                  eval_mb_size=128, device=device, evaluator=evaluation_plugin)
 
     res = None
     for experience in benchmark.train_stream:
