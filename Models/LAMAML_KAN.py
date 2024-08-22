@@ -1,8 +1,9 @@
 import torch.nn as nn
 from avalanche.models.dynamic_modules import MultiTaskModule,\
     MultiHeadClassifier
-from Scaled_KAN import FastKAN
- 
+# from Scaled_KAN import FastKAN
+from efficientKAN import *
+
 ####################
 #     CIFAR-100
 ####################
@@ -27,7 +28,7 @@ class ConvCIFAR(nn.Module):
         # self.classifier = nn.Linear(320, num_classes)
         self.device = device
         self.num_classes = num_classes
-        self.classifier = FastKAN(layers_hidden=[16*160,self.num_classes], grid_min=100, grid_max=101, device=self.device)
+        self.classifier = KAN(layers_hidden=[16*160,self.num_classes], grid_size=100, spline_order=2)
 
     def forward(self, x):
         x = self.conv_layers(x)
@@ -41,7 +42,7 @@ class MTConvCIFAR(ConvCIFAR, MultiTaskModule):
         super(MTConvCIFAR, self).__init__()
         # Classifier
         # self.classifier = MultiHeadClassifier(320)
-        self.classifier = FastKAN(layers_hidden=[16*160,100], grid_min=100, grid_max=101, device=self.device)
+        # self.classifier = FastKAN(layers_hidden=[16*160,100], grid_min=100, grid_max=101, device=self.device)
         self.device = device
 
     def forward(self, x, task_labels):

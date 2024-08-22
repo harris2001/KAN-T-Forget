@@ -3,22 +3,24 @@ import torch
 from torch.nn import CrossEntropyLoss
 from torch.optim import SGD
 from avalanche.evaluation import metrics as metrics
-
+import torchvision 
 import os
 import sys
 
 sys.path.append(os.path.abspath(os.path.join(os.getcwd(), '../','../', 'Models')))
 # from MLP import *
 # from kan import KAN
-from efficientKAN import *
+# from efficientKAN import *
 # from Scaled_KAN import *
 # from wavKAN import *
-# from KANvolver import KANvolver as KAN
+# from torchKAN import *
+# from KAN_conv import *
+# from ResNet import *
 
 def kan_smnist(override_args=None):
     args = {'cuda': 0, 'hidden_size': 400,
             'hidden_layers': 2, 'epochs': 5, 'dropout': 0,
-            'learning_rate': 0.001, 'train_mb_size': 16, 'seed': 1234}
+            'learning_rate': 0.0001, 'train_mb_size': 16, 'seed': 1234}
     
     torch.manual_seed(args['seed'])
     device = torch.device(f"cuda:{args['cuda']}"
@@ -31,14 +33,18 @@ def kan_smnist(override_args=None):
     # model = KAN(layers_hidden=[784,16,10], grid_size=5, spline_order=5)
     # model = KAN(layers_hidden=[784,400,10])
     # model = KAN([28 * 28, 64, 10])
-    model = KAN(layers_hidden=[784,16,10], grid_size=100, spline_order=4)
+    # model = KAN(layers_hidden=[784,10], grid_size=500, spline_order=2)
+    # model = KANvolver(layers_hidden=[784, 10], polynomial_order=2)
+    # model = NormalConvsKAN()
+    # model = Classifier(nb_base_classes=10, nb_total_classes=10, embed_dim=784, increment=0, nb_tasks=1)
+    model = torchvision.models.ResNet(layers=[28 * 28, 200, 400, 10], num_classes=10,block=torchvision.models.resnet.BasicBlock)
     model.to(device)
 
     criterion = CrossEntropyLoss()
 
     # interactive_logger = avl.logging.InteractiveLogger()
     # tensorboard_logger = avl.logging.TensorboardLogger('../results/tensorboard/gen_replay_pmnist_KAN')
-    csv_logger = avl.logging.CSVLogger('../results/csv/gen_replay_pmnist_KAN')
+    csv_logger = avl.logging.CSVLogger('../results/csv/pmnist_KAN')
 
     evaluation_plugin = avl.training.plugins.EvaluationPlugin(
         metrics.accuracy_metrics(epoch=True, experience=True, stream=True),

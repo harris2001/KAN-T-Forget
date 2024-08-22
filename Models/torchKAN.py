@@ -44,7 +44,7 @@ class KANvolver(nn.Module):
         
         x = self.feature_extractor(x)
         x = x.view(x.size(0), -1)  # Flatten the features from the conv layers
-        
+        print(x.shape)
         for base_weight, poly_weight, batch_norm in zip(self.base_weights, self.poly_weights, self.batch_norms):
             base_output = base_weight(x)
             monomial_basis = self.compute_efficient_monomials(x, self.polynomial_order)

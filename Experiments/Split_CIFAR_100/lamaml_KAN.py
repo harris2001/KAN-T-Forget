@@ -11,8 +11,8 @@ import os
 import sys
 
 sys.path.append(os.path.abspath(os.path.join(os.getcwd(), '../..', 'Models')))
-from LAMAML import MTConvCIFAR
-# from LAMAML_KAN import ConvCIFAR
+# from LAMAML import MTConvCIFAR
+from LAMAML_KAN import ConvCIFAR
 
 sys.path.append(os.path.abspath(os.path.join(os.getcwd(), '../', '')))
 # from utils import set_seed, create_default_args
@@ -59,35 +59,35 @@ def lamaml_scifar100(override_args=None):
     )
 
     # Strategy
-    model = MTConvCIFAR()
-    cl_strategy = LaMAML(
-        model,
-        torch.optim.SGD(model.parameters(), lr=args['lr']),
-        CrossEntropyLoss(),
-        n_inner_updates=args['n_inner_updates'],
-        second_order=args['second_order'],
-        grad_clip_norm=args['grad_clip_norm'],
-        learn_lr=args['learn_lr'],
-        lr_alpha=args['lr_alpha'],
-        sync_update=args['sync_update'],
-        train_mb_size=args['train_mb_size'],
-        train_epochs=args['train_epochs'],
-        eval_mb_size=100,
-        device=device,
-        plugins=[replay_plugin],
-        evaluator=evaluation_plugin,
-    )
-    # model = ConvCIFAR(device=device, num_classes=100)
-    # cl_strategy = avl.training.Naive(
-    #     model=model,
-    #     optimizer=torch.optim.SGD(model.parameters(), lr=args['lr']),
-    #     criterion=CrossEntropyLoss(),
+    # model = MTConvCIFAR()
+    # cl_strategy = LaMAML(
+    #     model,
+    #     torch.optim.SGD(model.parameters(), lr=args['lr']),
+    #     CrossEntropyLoss(),
+    #     n_inner_updates=args['n_inner_updates'],
+    #     second_order=args['second_order'],
+    #     grad_clip_norm=args['grad_clip_norm'],
+    #     learn_lr=args['learn_lr'],
+    #     lr_alpha=args['lr_alpha'],
+    #     sync_update=args['sync_update'],
     #     train_mb_size=args['train_mb_size'],
     #     train_epochs=args['train_epochs'],
     #     eval_mb_size=100,
     #     device=device,
+    #     plugins=[replay_plugin],
     #     evaluator=evaluation_plugin,
     # )
+    model = ConvCIFAR(device=device, num_classes=100)
+    cl_strategy = avl.training.Naive(
+        model=model,
+        optimizer=torch.optim.SGD(model.parameters(), lr=args['lr']),
+        criterion=CrossEntropyLoss(),
+        train_mb_size=args['train_mb_size'],
+        train_epochs=args['train_epochs'],
+        eval_mb_size=100,
+        device=device,
+        evaluator=evaluation_plugin,
+    )
     torch.save(model.state_dict(), '../saved_models/lamaml_KAN.pth')
     res = None
     for experience in benchmark.train_stream:
