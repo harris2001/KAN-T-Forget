@@ -28,7 +28,7 @@ class ConvCIFAR(nn.Module):
         # self.classifier = nn.Linear(320, num_classes)
         self.device = device
         self.num_classes = num_classes
-        self.classifier = KAN(layers_hidden=[16*160,self.num_classes], grid_size=100, spline_order=2)
+        self.classifier = KAN(layers_hidden=[16*160,10,20,10,self.num_classes], grid_size=30, spline_order=3).to(self.device)
 
     def forward(self, x):
         x = self.conv_layers(x)

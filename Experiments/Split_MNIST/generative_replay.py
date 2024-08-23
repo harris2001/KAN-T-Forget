@@ -58,6 +58,16 @@ def generative_replay_smnist(override_args=None):
         evaluator=evaluation_plugin,
     )
 
+    cl_strategy = avl.training.Naive(
+        model=model,
+        optimizer=torch.optim.SGD(model.parameters(), lr=args['learning_rate']),
+        criterion=criterion,
+        train_mb_size=args['train_mb_size'],
+        train_epochs=args['epochs'],
+        eval_mb_size=128,
+        device=device,
+        evaluator=evaluation_plugin,
+    )
     res = None
     for experience in benchmark.train_stream:
         cl_strategy.train(experience)

@@ -88,7 +88,7 @@ def lamaml_scifar100(override_args=None):
         device=device,
         evaluator=evaluation_plugin,
     )
-    torch.save(model.state_dict(), '../saved_models/lamaml_KAN.pth')
+    # torch.save(model.state_dict(), '../saved_models/lamaml_KAN.pth')
     res = None
     for experience in benchmark.train_stream:
         cl_strategy.train(experience)

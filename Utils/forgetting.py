@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 
-def plot_forgetting(filename):
+def plot_forgetting(filename, folder):
 
     # Load the data from a CSV file
     df = pd.read_csv(filename)
@@ -15,14 +15,14 @@ def plot_forgetting(filename):
 
     # Plotting the heatmap
     plt.figure(figsize=(12, 8))
-    sns.heatmap(heatmap_data, annot=False, fmt=".4f", cmap="coolwarm", cbar=True)
+    sns.heatmap(heatmap_data, annot=True, fmt=".4f", cmap="coolwarm", cbar=True)
     plt.title("Forgetting Heatmap")
     plt.xlabel("Evaluation Experience")
     plt.ylabel("Training Experience")
-    plt.savefig(filename.replace('.csv', '_heatmap.png'))
+    plt.savefig(folder+'_forgetting_heatmap.png')
 
 
-def plot_accuracy(filename):
+def plot_accuracy(filename,folder):
     # Load the data from a CSV file
     df = pd.read_csv(filename)
 
@@ -31,12 +31,13 @@ def plot_accuracy(filename):
 
     # Plotting the heatmap
     plt.figure(figsize=(12, 8))
-    sns.heatmap(heatmap_data, annot=False, fmt=".4f", cmap="coolwarm", cbar=True)
+    sns.heatmap(heatmap_data, annot=True, fmt=".4f", cmap="coolwarm", cbar=True)
     plt.title("Accuracy Heatmap")
     plt.xlabel("Evaluation Experience")
     plt.ylabel("Training Experience")
-    plt.savefig(filename.replace('.csv', '_accuracy_heatmap.png'))
+    plt.savefig(folder+'_accuracy_heatmap.png')
 
-file = "../Experiments/results/csv/lamaml_scifar100_KAN/eval_results.csv"
-plot_accuracy(file)
-plot_forgetting(file)
+folder = "../Experiments/results/csv/gen_replay_pmnist_KAN"
+file = folder+"/eval_results.csv"
+plot_accuracy(file,folder)
+plot_forgetting(file,folder)
