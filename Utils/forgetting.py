@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 
-def plot(filename):
+def plot_forgetting(filename):
 
     # Load the data from a CSV file
     df = pd.read_csv(filename)
@@ -21,7 +21,6 @@ def plot(filename):
     plt.ylabel("Training Experience")
     plt.savefig(filename.replace('.csv', '_heatmap.png'))
 
-plot('../Experiments/results/csv/lamaml_scifar100_KAN/eval_results.csv')
 
 def plot_accuracy(filename):
     # Load the data from a CSV file
@@ -38,4 +37,6 @@ def plot_accuracy(filename):
     plt.ylabel("Training Experience")
     plt.savefig(filename.replace('.csv', '_accuracy_heatmap.png'))
 
-plot_accuracy('../Experiments/results/csv/lamaml_scifar100_KAN/eval_results.csv')
+file = "../Experiments/results/csv/lamaml_scifar100_KAN/eval_results.csv"
+plot_accuracy(file)
+plot_forgetting(file)

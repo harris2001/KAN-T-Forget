@@ -9,7 +9,9 @@ import sys
 
 sys.path.append(os.path.abspath(os.path.join(os.getcwd(), '../','../', 'Models')))
 from MLP import *
-from Scaled_KAN import *
+# from Scaled_KAN import *
+from efficientKAN import *
+from ConvolutionalKAN import *
 
 
 def generative_replay_smnist(override_args=None):
@@ -29,9 +31,10 @@ def generative_replay_smnist(override_args=None):
     benchmark = avl.benchmarks.SplitMNIST(5, return_task_id=False)
     # model = MLP(hidden_size=args['hidden_size'], hidden_layers=args['hidden_layers'],
     #             drop_rate=args['dropout'], relu_act=True)
-    model = FastKAN(layers_hidden=[784,64,64,10], grid_min=4, grid_max=5, device=device)
+    # model = FastKAN(layers_hidden=[784,64,64,10], grid_min=4, grid_max=5, device=device)
     # model = FastKAN(layers_hidden=[784,16,10], grid_min=4, grid_max=5, device=device)
-
+    model = ConvKAN().to(device)
+    # model = KAN(layers_hidden=[784,10,20,10], grid_size=10, spline_order=2).to(device)
     criterion = CrossEntropyLoss()
 
     # interactive_logger = avl.logging.InteractiveLogger()
@@ -45,7 +48,7 @@ def generative_replay_smnist(override_args=None):
 
     cl_strategy = avl.training.GenerativeReplay(
         model=model,
-        optimizer=torch.optim.Adam(model.parameters(), lr=args['learning_rate']),
+        optimizer=torch.optim.SGD(model.parameters(), lr=args['learning_rate']),
         criterion=criterion,
         train_mb_size=args['train_mb_size'],
         train_epochs=args['epochs'],
